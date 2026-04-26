@@ -1,60 +1,46 @@
 import sql from "../lib/db.js";
 
-export async function create(data, idempotencyKey) {
-  // Without a key, just insert — no idempotency guarantee
-  if (!idempotencyKey) {
-    const rows = await sql`
-      INSERT INTO expenses (amount, category, description, date)
-      VALUES (${data.amount}, ${data.category}, ${data.description || null}, ${data.date})
-      RETURNING *
-    `;
-    return rows[0];
-  }
-
-  // With a key: check first to avoid unnecessary writes on retries
-  const existing = await sql`
-    SELECT e.* FROM expenses e
-    JOIN idempotency_keys ik ON ik.expense_id = e.id
-    WHERE ik.key = ${idempotencyKey}
+export async function create(data) {
+  // ON CONFLICT DO NOTHING silently ignores duplicate submissions.
+  // RETURNING * returns the existing row if a conflict occurs via a follow-up SELECT.
+  const rows = await sql`
+    INSERT INTO expenses (amount, category, description, date)
+    VALUES (${data.amount}, ${data.category}, ${data.description || null}, ${data.date})
+    ON CONFLICT (amount, category, date, description) DO NOTHING
+    RETURNING *
   `;
-  if (existing.length > 0) return existing[0];
 
-  // Insert expense then record key atomically — prevents duplicate on concurrent retries
-  const rows = await sql.transaction(async (tx) => {
-    const inserted = await tx`
-      INSERT INTO expenses (amount, category, description, date)
-      VALUES (${data.amount}, ${data.category}, ${data.description || null}, ${data.date})
-      RETURNING *
-    `;
-    await tx`
-      INSERT INTO idempotency_keys (key, expense_id)
-      VALUES (${idempotencyKey}, ${inserted[0].id})
-      ON CONFLICT (key) DO NOTHING
-    `;
-    return inserted;
-  });
+  if (rows.length > 0) return rows[0];
 
-  return rows[0];
+  // Row already existed — return it
+  const existing = await sql`
+    SELECT * FROM expenses
+    WHERE amount = ${data.amount}
+      AND category = ${data.category}
+      AND date = ${data.date}
+      AND (description = ${data.description || null} OR (description IS NULL AND ${data.description || null} IS NULL))
+    LIMIT 1
+  `;
+  return existing[0];
 }
 
 export async function list(query) {
-  // default to newest first — matches the UI default and user expectation
   const desc = query.sort !== "date_asc";
 
-  // filter by category if provided, otherwise list all
   if (query.category) {
-    if (desc)
-      return sql`SELECT * FROM expenses WHERE category = ${query.category} ORDER BY date DESC`;
-    return sql`SELECT * FROM expenses WHERE category = ${query.category} ORDER BY date ASC`;
+    return desc
+      ? sql`SELECT * FROM expenses WHERE category = ${query.category} ORDER BY date DESC`
+      : sql`SELECT * FROM expenses WHERE category = ${query.category} ORDER BY date ASC`;
   }
 
-  if (desc) return sql`SELECT * FROM expenses ORDER BY date DESC`;
-  return sql`SELECT * FROM expenses ORDER BY date ASC`;
+  return desc
+    ? sql`SELECT * FROM expenses ORDER BY date DESC`
+    : sql`SELECT * FROM expenses ORDER BY date ASC`;
 }
 
 export async function summary() {
   const rows = await sql`
-    SELECT category, SUM(amount) total, COUNT(*) count
+    SELECT category, SUM(amount) AS total, COUNT(*) AS count
     FROM expenses
     GROUP BY category
     ORDER BY total DESC
@@ -62,6 +48,6 @@ export async function summary() {
   return rows.map((r) => ({
     category: r.category,
     total: Number(r.total),
-    count: r.count,
+    count: Number(r.count),
   }));
 }

@@ -8,25 +8,18 @@ import expenses from "./routes/expense.route.js";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// middlewares
 app.use(express.json());
 app.use(cors());
 app.use(morgan("dev"));
 
-// health-check
-app.get("/", (req, res) => {
-  res.json({ status: "ok" });
-});
-
+app.get("/", (req, res) => res.json({ status: "ok" }));
 app.use("/api/expenses", expenses);
 
-// catch all errors and send formatted response
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   const status = err.status || 500;
-  const message = err.message || "Server error";
-  console.error(`[${status}]`, message);
-  res.status(status).json({ error: message });
+  console.error(`[${status}]`, err.message);
+  res.status(status).json({ error: err.message || "Server error" });
 });
 
 async function start() {

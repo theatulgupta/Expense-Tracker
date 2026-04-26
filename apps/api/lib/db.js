@@ -9,20 +9,14 @@ export async function connectDB() {
 
     await sql`
       CREATE TABLE IF NOT EXISTS expenses (
-        id SERIAL PRIMARY KEY,
-        amount NUMERIC(10,2) NOT NULL CHECK (amount > 0),
-        category VARCHAR(255) NOT NULL,
+        id          SERIAL PRIMARY KEY,
+        amount      NUMERIC(10,2) NOT NULL CHECK (amount > 0),
+        category    VARCHAR(100)  NOT NULL,
         description TEXT,
-        date DATE DEFAULT CURRENT_DATE,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `;
-
-    await sql`
-      CREATE TABLE IF NOT EXISTS idempotency_keys (
-        key TEXT PRIMARY KEY,
-        expense_id INTEGER REFERENCES expenses(id),
-        created_at TIMESTAMP DEFAULT NOW()
+        date        DATE          NOT NULL,
+        created_at  TIMESTAMP     DEFAULT NOW(),
+        -- prevents duplicate submissions (same amount+category+date+description)
+        UNIQUE (amount, category, date, description)
       )
     `;
 

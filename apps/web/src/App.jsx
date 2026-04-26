@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createExpense, fetchExpenses } from "./lib/api";
 import SummaryPanel from "./SummaryPanel";
@@ -24,21 +24,13 @@ const initialForm = {
   date: "",
 };
 
-// Today's date in YYYY-MM-DD (local time) — used as the max for the date input
-const today = new Date().toLocaleDateString("en-CA"); // en-CA gives YYYY-MM-DD
+// en-CA locale gives YYYY-MM-DD format, used as the date input max
+const today = new Date().toLocaleDateString("en-CA");
 
-function newKey() {
-  return typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random()}`;
-}
-
-// Postgres DATE returns "2026-04-26"; old TIMESTAMP rows return "2026-04-26T..."
-// Normalise to the date part only, then append T00:00:00 to force local-time
-// parse so toLocaleDateString never shows the previous day for UTC+ users.
+// Postgres DATE strings ("2026-04-26") parse as UTC midnight in JS.
+// Appending T00:00:00 forces local-time parse so the displayed date is correct.
 function formatDate(dateStr) {
-  const datePart = String(dateStr).slice(0, 10);
-  const d = new Date(`${datePart}T00:00:00`);
+  const d = new Date(`${String(dateStr).slice(0, 10)}T00:00:00`);
   return isNaN(d) ? dateStr : d.toLocaleDateString();
 }
 
@@ -48,7 +40,6 @@ function App() {
   const [sort, setSort] = useState("date_desc");
   const [submitError, setSubmitError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const idempotencyKey = useRef(newKey());
   const queryClient = useQueryClient();
 
   const expensesQuery = useQuery({
@@ -57,9 +48,9 @@ function App() {
   });
 
   const items = useMemo(() => {
-    if (!expensesQuery.data) return [];
-    if (Array.isArray(expensesQuery.data)) return expensesQuery.data;
-    return expensesQuery.data.items || expensesQuery.data.data || [];
+    const data = expensesQuery.data;
+    if (!data) return [];
+    return Array.isArray(data) ? data : data.items ?? data.data ?? [];
   }, [expensesQuery.data]);
 
   const total = useMemo(
@@ -68,30 +59,25 @@ function App() {
   );
 
   const createMutation = useMutation({
-    mutationFn: (values) => createExpense(values, idempotencyKey.current),
+    mutationFn: createExpense,
     onSuccess: async () => {
       setForm(initialForm);
-      idempotencyKey.current = newKey();
       setSubmitError("");
       setSuccessMsg("Expense saved!");
       setTimeout(() => setSuccessMsg(""), 3000);
       await queryClient.invalidateQueries({ queryKey: ["expenses"] });
       await queryClient.invalidateQueries({ queryKey: ["summary"] });
     },
-    onError: (error) => {
-      setSubmitError(error.message || "Could not save expense");
-    },
+    onError: (err) => setSubmitError(err.message || "Could not save expense"),
   });
 
-  function handleChange(event) {
-    const { name, value } = event.target;
-    // clear errors as soon as the user starts correcting input
+  function handleChange(e) {
     if (submitError) setSubmitError("");
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  function handleSubmit(event) {
-    event.preventDefault();
+  function handleSubmit(e) {
+    e.preventDefault();
 
     const resolvedCategory =
       form.category === "Other" ? form.customCategory.trim() : form.category;
@@ -105,14 +91,14 @@ function App() {
       return;
     }
 
-    const parsedAmount = Number(form.amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    const amount = Number(form.amount);
+    if (isNaN(amount) || amount <= 0) {
       setSubmitError("Amount must be a positive number");
       return;
     }
 
     createMutation.mutate({
-      amount: parsedAmount,
+      amount,
       category: resolvedCategory,
       description: form.description.trim(),
       date: form.date,
@@ -188,17 +174,13 @@ function App() {
             />
           </label>
 
-          <button
-            type="submit"
-            disabled={createMutation.isPending}
-            className="full submit"
-          >
+          <button type="submit" disabled={createMutation.isPending} className="full">
             {createMutation.isPending ? "Saving..." : "Add Expense"}
           </button>
         </form>
 
-        {submitError ? <p className="error">{submitError}</p> : null}
-        {successMsg ? <p className="success">{successMsg}</p> : null}
+        {submitError && <p className="error">{submitError}</p>}
+        {successMsg && <p className="success">{successMsg}</p>}
       </section>
 
       <section className="card">
@@ -214,7 +196,6 @@ function App() {
                 ))}
               </select>
             </label>
-
             <label>
               Sort
               <select value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -225,15 +206,12 @@ function App() {
           </div>
         </div>
 
-        {expensesQuery.isLoading ? (
+        {expensesQuery.isLoading && (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Category</th>
-                  <th>Description</th>
-                  <th className="right">Amount</th>
+                  <th>Date</th><th>Category</th><th>Description</th><th className="right">Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -248,44 +226,35 @@ function App() {
               </tbody>
             </table>
           </div>
-        ) : null}
+        )}
 
-        {expensesQuery.isError ? (
+        {expensesQuery.isError && (
           <div className="error-state">
             <p className="error">
               {expensesQuery.error?.name === "AbortError"
                 ? "Request timed out. Check your connection."
                 : "Could not load expenses."}
             </p>
-            <button
-              type="button"
-              className="retry"
-              onClick={() => expensesQuery.refetch()}
-            >
+            <button type="button" className="retry" onClick={() => expensesQuery.refetch()}>
               Retry
             </button>
           </div>
-        ) : null}
+        )}
 
-        {!expensesQuery.isLoading && !expensesQuery.isError ? (
+        {!expensesQuery.isLoading && !expensesQuery.isError && (
           <>
             <p className="total">Total: ₹{total.toFixed(2)}</p>
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Category</th>
-                    <th>Description</th>
-                    <th className="right">Amount</th>
+                    <th>Date</th><th>Category</th><th>Description</th><th className="right">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="empty">
-                        No expenses yet
-                      </td>
+                      <td colSpan="4" className="empty">No expenses yet</td>
                     </tr>
                   ) : (
                     items.map((item) => (
@@ -293,9 +262,7 @@ function App() {
                         <td>{formatDate(item.date)}</td>
                         <td>{item.category}</td>
                         <td>{item.description || "-"}</td>
-                        <td className="right">
-                          ₹{Number(item.amount).toFixed(2)}
-                        </td>
+                        <td className="right">₹{Number(item.amount).toFixed(2)}</td>
                       </tr>
                     ))
                   )}
@@ -303,7 +270,7 @@ function App() {
               </table>
             </div>
           </>
-        ) : null}
+        )}
       </section>
 
       <SummaryPanel />

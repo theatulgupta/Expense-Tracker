@@ -1,14 +1,9 @@
 const API_BASE = import.meta.env.VITE_API_URL || "";
-const TIMEOUT_MS = 10_000;
 
-function withBase(path) {
-  return `${API_BASE}${path}`;
-}
-
-// Wraps fetch with a timeout so hung networks don't block the UI forever
+// Abort fetch after 10s so a hung network doesn't freeze the UI
 function fetchWithTimeout(url, options = {}) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), 10_000);
   return fetch(url, { ...options, signal: controller.signal }).finally(() =>
     clearTimeout(timer),
   );
@@ -21,25 +16,22 @@ export async function fetchExpenses({ category, sort }) {
 
   const query = params.toString();
   const res = await fetchWithTimeout(
-    withBase(`/api/expenses${query ? `?${query}` : ""}`),
+    `${API_BASE}/api/expenses${query ? `?${query}` : ""}`,
   );
   if (!res.ok) throw new Error("Could not load expenses");
   return res.json();
 }
 
 export async function fetchSummary() {
-  const res = await fetchWithTimeout(withBase("/api/expenses/summary"));
+  const res = await fetchWithTimeout(`${API_BASE}/api/expenses/summary`);
   if (!res.ok) throw new Error("Could not load summary");
   return res.json();
 }
 
-export async function createExpense(payload, idempotencyKey) {
-  const res = await fetchWithTimeout(withBase("/api/expenses"), {
+export async function createExpense(payload) {
+  const res = await fetchWithTimeout(`${API_BASE}/api/expenses`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Idempotency-Key": idempotencyKey,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
