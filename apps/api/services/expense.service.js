@@ -1,24 +1,25 @@
 import sql from "../lib/db.js";
 
 export async function create(data) {
-  // ON CONFLICT DO NOTHING silently ignores duplicate submissions.
-  // RETURNING * returns the existing row if a conflict occurs via a follow-up SELECT.
+  const desc = data.description || null;
+
+  // ON CONFLICT uses the same expression as the unique index in db.js
   const rows = await sql`
     INSERT INTO expenses (amount, category, description, date)
-    VALUES (${data.amount}, ${data.category}, ${data.description || null}, ${data.date})
-    ON CONFLICT (amount, category, date, description) DO NOTHING
+    VALUES (${data.amount}, ${data.category}, ${desc}, ${data.date})
+    ON CONFLICT (amount, category, date, COALESCE(description, '')) DO NOTHING
     RETURNING *
   `;
 
   if (rows.length > 0) return rows[0];
 
-  // Row already existed — return it
+  // Duplicate — fetch and return the existing row
   const existing = await sql`
     SELECT * FROM expenses
     WHERE amount = ${data.amount}
       AND category = ${data.category}
       AND date = ${data.date}
-      AND (description = ${data.description || null} OR (description IS NULL AND ${data.description || null} IS NULL))
+      AND COALESCE(description, '') = ${desc || ""}
     LIMIT 1
   `;
   return existing[0];

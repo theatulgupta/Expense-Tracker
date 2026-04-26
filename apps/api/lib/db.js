@@ -14,10 +14,15 @@ export async function connectDB() {
         category    VARCHAR(100)  NOT NULL,
         description TEXT,
         date        DATE          NOT NULL,
-        created_at  TIMESTAMP     DEFAULT NOW(),
-        -- prevents duplicate submissions (same amount+category+date+description)
-        UNIQUE (amount, category, date, description)
+        created_at  TIMESTAMP     DEFAULT NOW()
       )
+    `;
+
+    -- UNIQUE constraint on description fails for NULLs (two NULLs are distinct in Postgres).
+    -- A unique index with COALESCE treats NULL as empty string for dedup purposes.
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS expenses_dedup_idx
+      ON expenses (amount, category, date, COALESCE(description, ''))
     `;
 
     console.log("✓ Database ready");
