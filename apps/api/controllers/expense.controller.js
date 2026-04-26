@@ -4,9 +4,10 @@ import * as Expense from "../services/expense.service.js";
 // request validation schemas
 const createSchema = z.object({
   amount: z.number().positive(),
-  category: z.string().min(1),
-  description: z.string().optional(),
-  date: z.string(),
+  category: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  // must be a real ISO date string (YYYY-MM-DD), not arbitrary text
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
 });
 
 const listSchema = z.object({
