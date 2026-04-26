@@ -30,7 +30,6 @@ body {
 .header h1 {
   margin: 0;
   font-size: 1.7rem;
-  text-transform: lowercase;
 }
 
 .header p {
@@ -75,6 +74,16 @@ button {
   border-radius: 8px;
   border: 1px solid #cfd8e3;
   padding: 8px 10px;
+  height: 40px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #1769e0;
+  box-shadow: 0 0 0 3px rgba(23, 105, 224, 0.15);
 }
 
 button {
@@ -82,6 +91,8 @@ button {
   border-color: #1769e0;
   color: #fff;
   cursor: pointer;
+  height: auto;
+  padding: 10px;
 }
 
 button:disabled {
@@ -108,6 +119,10 @@ button:disabled {
   flex-direction: column;
   font-size: 0.85rem;
   gap: 6px;
+}
+
+.controls select {
+  width: auto;
 }
 
 .total {
@@ -149,6 +164,30 @@ th {
 .error {
   color: #b91c1c;
   margin-top: 10px;
+}
+
+.success {
+  color: #15803d;
+  margin-top: 10px;
+  font-weight: 500;
+}
+
+.required {
+  color: #b91c1c;
+  margin-left: 2px;
+}
+
+.optional {
+  color: #6b7280;
+  font-size: 0.8rem;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.label-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 @media (max-width: 760px) {

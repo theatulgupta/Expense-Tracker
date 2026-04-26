@@ -9,26 +9,24 @@ export async function connectDB() {
 
     await sql`
       CREATE TABLE IF NOT EXISTS expenses (
-        id SERIAL PRIMARY KEY,
-        amount NUMERIC(10,2) NOT NULL CHECK (amount > 0),
-        category VARCHAR(255) NOT NULL,
+        id          SERIAL PRIMARY KEY,
+        amount      NUMERIC(10,2) NOT NULL CHECK (amount > 0),
+        category    VARCHAR(100)  NOT NULL,
         description TEXT,
-        date TIMESTAMP DEFAULT NOW(),
-        created_at TIMESTAMP DEFAULT NOW()
+        date        DATE          NOT NULL,
+        created_at  TIMESTAMP     DEFAULT NOW()
       )
     `;
 
+    // unique index uses COALESCE so two null descriptions are treated as duplicates
     await sql`
-      CREATE TABLE IF NOT EXISTS idempotency_keys (
-        key TEXT PRIMARY KEY,
-        expense_id INTEGER REFERENCES expenses(id),
-        created_at TIMESTAMP DEFAULT NOW()
-      )
+      CREATE UNIQUE INDEX IF NOT EXISTS expenses_dedup_idx
+      ON expenses (amount, category, date, COALESCE(description, ''))
     `;
 
-    console.log("✓ Database ready");
+    console.log("✓ database ready");
   } catch (err) {
-    console.error("✗ Database error:", err.message);
+    console.error("✗ database error:", err.message);
     process.exit(1);
   }
 }

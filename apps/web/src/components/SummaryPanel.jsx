@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchSummary } from "./lib/api";
+import { fetchSummary } from "../lib/api";
 
 export default function SummaryPanel() {
   const { data, isLoading, isError } = useQuery({
@@ -7,20 +7,20 @@ export default function SummaryPanel() {
     queryFn: fetchSummary,
   });
 
-  if (isLoading) return <p>loading summary...</p>;
-  if (isError) return <p className="error">could not load summary.</p>;
+  if (isLoading) return <p>Loading summary...</p>;
+  if (isError) return <p className="error">Could not load summary.</p>;
   if (!data || data.length === 0) return null;
 
   return (
     <section className="card">
-      <h2>by category</h2>
+      <h2>By Category</h2>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>category</th>
-              <th className="right">count</th>
-              <th className="right">total</th>
+              <th>Category</th>
+              <th className="right">Count</th>
+              <th className="right">Total</th>
             </tr>
           </thead>
           <tbody>

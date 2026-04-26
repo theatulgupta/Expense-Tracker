@@ -1,12 +1,11 @@
 import { z } from "zod";
 import * as Expense from "../services/expense.service.js";
 
-// request validation schemas
 const createSchema = z.object({
   amount: z.number().positive(),
-  category: z.string().min(1),
-  description: z.string().optional(),
-  date: z.string(),
+  category: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
 });
 
 const listSchema = z.object({
@@ -17,13 +16,11 @@ const listSchema = z.object({
 export async function create(req, res, next) {
   try {
     const body = createSchema.parse(req.body);
-    const idempotencyKey = req.headers["idempotency-key"] || null;
-    const expense = await Expense.create(body, idempotencyKey);
+    const expense = await Expense.create(body);
     res.status(201).json(expense);
   } catch (err) {
-    // zod validation errors go back to client, other errors passed to error handler
     if (err instanceof z.ZodError)
-      return res.status(400).json({ issues: err.errors });
+      return res.status(400).json({ error: err.errors[0].message });
     next(err);
   }
 }
@@ -32,20 +29,18 @@ export async function list(req, res, next) {
   try {
     const filters = listSchema.parse(req.query);
     const expenses = await Expense.list(filters);
-    // convert db strings to numbers for accurate financial totals
-    const total = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+    const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
     res.json({ count: expenses.length, total, items: expenses });
   } catch (err) {
     if (err instanceof z.ZodError)
-      return res.status(400).json({ issues: err.errors });
+      return res.status(400).json({ error: err.errors[0].message });
     next(err);
   }
 }
 
 export async function summary(req, res, next) {
   try {
-    const data = await Expense.summary();
-    res.json(data);
+    res.json(await Expense.summary());
   } catch (err) {
     next(err);
   }
