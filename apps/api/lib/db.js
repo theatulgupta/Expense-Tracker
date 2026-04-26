@@ -18,16 +18,15 @@ export async function connectDB() {
       )
     `;
 
-    -- UNIQUE constraint on description fails for NULLs (two NULLs are distinct in Postgres).
-    -- A unique index with COALESCE treats NULL as empty string for dedup purposes.
+    // unique index uses COALESCE so two null descriptions are treated as duplicates
     await sql`
       CREATE UNIQUE INDEX IF NOT EXISTS expenses_dedup_idx
       ON expenses (amount, category, date, COALESCE(description, ''))
     `;
 
-    console.log("✓ Database ready");
+    console.log("✓ database ready");
   } catch (err) {
-    console.error("✗ Database error:", err.message);
+    console.error("✗ database error:", err.message);
     process.exit(1);
   }
 }

@@ -15,19 +15,19 @@ app.use(morgan("dev"));
 app.get("/", (req, res) => res.json({ status: "ok" }));
 app.use("/api/expenses", expenses);
 
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
+// 4-arg signature is required for express to treat this as an error handler
+app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   const status = err.status || 500;
   console.error(`[${status}]`, err.message);
-  res.status(status).json({ error: err.message || "Server error" });
+  res.status(status).json({ error: err.message || "server error" });
 });
 
 async function start() {
   try {
     await connectDB();
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.listen(PORT, () => console.log(`server running on port ${PORT}`));
   } catch (err) {
-    console.error("Failed to start:", err.message);
+    console.error("failed to start:", err.message);
     process.exit(1);
   }
 }

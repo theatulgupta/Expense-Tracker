@@ -1,6 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-// Abort fetch after 10s so a hung network doesn't freeze the UI
+// aborts after 10s so a hung network doesn't freeze the ui
 function fetchWithTimeout(url, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10_000);
