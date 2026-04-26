@@ -3,12 +3,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createExpense, fetchExpenses } from "./lib/api";
 import SummaryPanel from "./SummaryPanel";
 
-// categories are derived from ALL expenses (no filter) so the dropdown
-// never loses options when a filter is active
+const CATEGORIES = [
+  "Food",
+  "Transport",
+  "Shopping",
+  "Entertainment",
+  "Health",
+  "Utilities",
+  "Rent",
+  "Education",
+  "Travel",
+  "Other",
+];
 
 const initialForm = {
   amount: "",
   category: "",
+  customCategory: "",
   description: "",
   date: "",
 };
@@ -21,15 +32,15 @@ function newKey() {
 
 function App() {
   const [form, setForm] = useState(initialForm);
-  const [category, setCategory] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
   const [sort, setSort] = useState("date_desc");
   const [submitError, setSubmitError] = useState("");
   const idempotencyKey = useRef(newKey());
   const queryClient = useQueryClient();
 
   const expensesQuery = useQuery({
-    queryKey: ["expenses", { category, sort }],
-    queryFn: () => fetchExpenses({ category, sort }),
+    queryKey: ["expenses", { category: filterCategory, sort }],
+    queryFn: () => fetchExpenses({ category: filterCategory, sort }),
   });
 
   const items = useMemo(() => {
@@ -42,22 +53,6 @@ function App() {
     () => items.reduce((sum, row) => sum + Number(row.amount), 0),
     [items],
   );
-
-  // fetch all expenses (no filter) just to build the category list
-  const allExpensesQuery = useQuery({
-    queryKey: ["expenses", {}],
-    queryFn: () => fetchExpenses({}),
-  });
-
-  const categories = useMemo(() => {
-    const source = allExpensesQuery.data;
-    const all = Array.isArray(source)
-      ? source
-      : source?.items ?? source?.data ?? [];
-    return [...new Set(all.map((i) => i.category).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b),
-    );
-  }, [allExpensesQuery.data]);
 
   const createMutation = useMutation({
     mutationFn: (values) => createExpense(values, idempotencyKey.current),
@@ -81,20 +76,27 @@ function App() {
   function handleSubmit(event) {
     event.preventDefault();
 
+    const resolvedCategory =
+      form.category === "Other" ? form.customCategory.trim() : form.category;
+
     if (!form.amount || !form.category || !form.date) {
-      setSubmitError("amount, category and date are required");
+      setSubmitError("Amount, category and date are required");
+      return;
+    }
+    if (form.category === "Other" && !resolvedCategory) {
+      setSubmitError("Please specify a category");
       return;
     }
 
     const parsedAmount = Number(form.amount);
     if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      setSubmitError("amount must be a positive number");
+      setSubmitError("Amount must be a positive number");
       return;
     }
 
     createMutation.mutate({
       amount: parsedAmount,
-      category: form.category.trim(),
+      category: resolvedCategory,
       description: form.description.trim(),
       date: form.date,
     });
@@ -103,20 +105,20 @@ function App() {
   return (
     <main className="page">
       <header className="header">
-        <h1>expense tracker</h1>
-        <p>track spending with reliable totals</p>
+        <h1>Expense Tracker</h1>
+        <p>Track spending with reliable totals</p>
       </header>
 
       <section className="card">
-        <h2>add expense</h2>
+        <h2>Add Expense</h2>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
-            amount
+            Amount
             <input
               name="amount"
               type="number"
               step="0.01"
-              min="0"
+              min="0.01"
               value={form.amount}
               onChange={handleChange}
               placeholder="0.00"
@@ -125,18 +127,17 @@ function App() {
           </label>
 
           <label>
-            category
-            <input
-              name="category"
-              value={form.category}
-              onChange={handleChange}
-              placeholder="food"
-              required
-            />
+            Category
+            <select name="category" value={form.category} onChange={handleChange} required>
+              <option value="">Select category</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </label>
 
           <label>
-            date
+            Date
             <input
               name="date"
               type="date"
@@ -146,13 +147,26 @@ function App() {
             />
           </label>
 
+          {form.category === "Other" && (
+            <label className="full">
+              Specify Category
+              <input
+                name="customCategory"
+                value={form.customCategory}
+                onChange={handleChange}
+                placeholder="e.g. Gifts"
+                required
+              />
+            </label>
+          )}
+
           <label className="full">
-            description
+            Description
             <input
               name="description"
               value={form.description}
               onChange={handleChange}
-              placeholder="lunch with team"
+              placeholder="Lunch with team"
             />
           </label>
 
@@ -161,7 +175,7 @@ function App() {
             disabled={createMutation.isPending}
             className="full submit"
           >
-            {createMutation.isPending ? "saving..." : "add expense"}
+            {createMutation.isPending ? "Saving..." : "Add Expense"}
           </button>
         </form>
         {submitError ? <p className="error">{submitError}</p> : null}
@@ -169,28 +183,23 @@ function App() {
 
       <section className="card">
         <div className="toolbar">
-          <h2>expenses</h2>
+          <h2>Expenses</h2>
           <div className="controls">
             <label>
-              category
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                <option value="">all</option>
-                {categories.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
+              Category
+              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+                <option value="">All</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </label>
 
             <label>
-              sort
+              Sort
               <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                <option value="date_desc">newest first</option>
-                <option value="date_asc">oldest first</option>
+                <option value="date_desc">Newest first</option>
+                <option value="date_asc">Oldest first</option>
               </select>
             </label>
           </div>
@@ -201,10 +210,10 @@ function App() {
             <table>
               <thead>
                 <tr>
-                  <th>date</th>
-                  <th>category</th>
-                  <th>description</th>
-                  <th className="right">amount</th>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th className="right">Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -220,37 +229,38 @@ function App() {
             </table>
           </div>
         ) : null}
+
         {expensesQuery.isError ? (
           <div className="error-state">
-            <p className="error">could not load expenses.</p>
+            <p className="error">Could not load expenses.</p>
             <button
               type="button"
               className="retry"
               onClick={() => expensesQuery.refetch()}
             >
-              retry
+              Retry
             </button>
           </div>
         ) : null}
 
         {!expensesQuery.isLoading && !expensesQuery.isError ? (
           <>
-            <p className="total">total: ₹{total.toFixed(2)}</p>
+            <p className="total">Total: ₹{total.toFixed(2)}</p>
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>date</th>
-                    <th>category</th>
-                    <th>description</th>
-                    <th className="right">amount</th>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th className="right">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
                     <tr>
                       <td colSpan="4" className="empty">
-                        no expenses yet
+                        No expenses yet
                       </td>
                     </tr>
                   ) : (
