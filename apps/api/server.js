@@ -32,5 +32,7 @@ async function start() {
   }
 }
 
-start();
+// on vercel, connectDB at module load since start() is skipped
+if (process.env.VERCEL === "1") connectDB();
+else start();
 export default app;
