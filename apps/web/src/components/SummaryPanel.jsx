@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchSummary } from "./lib/api";
+import { fetchSummary } from "../lib/api";
 
 export default function SummaryPanel() {
   const { data, isLoading, isError } = useQuery({
