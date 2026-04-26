@@ -38,8 +38,8 @@ export async function create(data, idempotencyKey) {
 }
 
 export async function list(query) {
-  // determine sort direction from query parameter
-  const desc = query.sort === "date_desc";
+  // default to newest first — matches the UI default and user expectation
+  const desc = query.sort !== "date_asc";
 
   // filter by category if provided, otherwise list all
   if (query.category) {
