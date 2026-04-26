@@ -1,0 +1,6 @@
+{
+  "name": "expense-tracker",
+  "scripts": {
+    "build": "cd apps/web && npm install && npm run build"
+  }
+}
