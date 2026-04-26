@@ -24,10 +24,20 @@ const initialForm = {
   date: "",
 };
 
+// Today's date in YYYY-MM-DD (local time) — used as the max for the date input
+const today = new Date().toLocaleDateString("en-CA"); // en-CA gives YYYY-MM-DD
+
 function newKey() {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random()}`;
+}
+
+// DATE strings from Postgres ("2026-04-26") are UTC midnight when parsed by
+// new Date(). Appending T00:00:00 forces local-time parse so toLocaleDateString
+// never shows the previous day for UTC+ users.
+function formatDate(dateStr) {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString();
 }
 
 function App() {
@@ -35,6 +45,7 @@ function App() {
   const [filterCategory, setFilterCategory] = useState("");
   const [sort, setSort] = useState("date_desc");
   const [submitError, setSubmitError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const idempotencyKey = useRef(newKey());
   const queryClient = useQueryClient();
 
@@ -59,9 +70,11 @@ function App() {
     onSuccess: async () => {
       setForm(initialForm);
       idempotencyKey.current = newKey();
+      setSubmitError("");
+      setSuccessMsg("Expense saved!");
+      setTimeout(() => setSuccessMsg(""), 3000);
       await queryClient.invalidateQueries({ queryKey: ["expenses"] });
       await queryClient.invalidateQueries({ queryKey: ["summary"] });
-      setSubmitError("");
     },
     onError: (error) => {
       setSubmitError(error.message || "Could not save expense");
@@ -70,6 +83,8 @@ function App() {
 
   function handleChange(event) {
     const { name, value } = event.target;
+    // clear errors as soon as the user starts correcting input
+    if (submitError) setSubmitError("");
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
@@ -142,6 +157,7 @@ function App() {
               name="date"
               type="date"
               value={form.date}
+              max={today}
               onChange={handleChange}
               required
             />
@@ -178,7 +194,9 @@ function App() {
             {createMutation.isPending ? "Saving..." : "Add Expense"}
           </button>
         </form>
+
         {submitError ? <p className="error">{submitError}</p> : null}
+        {successMsg ? <p className="success">{successMsg}</p> : null}
       </section>
 
       <section className="card">
@@ -232,7 +250,11 @@ function App() {
 
         {expensesQuery.isError ? (
           <div className="error-state">
-            <p className="error">Could not load expenses.</p>
+            <p className="error">
+              {expensesQuery.error?.name === "AbortError"
+                ? "Request timed out. Check your connection."
+                : "Could not load expenses."}
+            </p>
             <button
               type="button"
               className="retry"
@@ -266,7 +288,7 @@ function App() {
                   ) : (
                     items.map((item) => (
                       <tr key={item.id}>
-                        <td>{new Date(item.date).toLocaleDateString()}</td>
+                        <td>{formatDate(item.date)}</td>
                         <td>{item.category}</td>
                         <td>{item.description || "-"}</td>
                         <td className="right">
