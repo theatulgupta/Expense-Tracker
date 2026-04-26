@@ -76,6 +76,13 @@ button {
   padding: 8px 10px;
 }
 
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #1769e0;
+  box-shadow: 0 0 0 3px rgba(23, 105, 224, 0.15);
+}
+
 button {
   background: #1769e0;
   border-color: #1769e0;
@@ -148,6 +155,12 @@ th {
 .error {
   color: #b91c1c;
   margin-top: 10px;
+}
+
+.success {
+  color: #15803d;
+  margin-top: 10px;
+  font-weight: 500;
 }
 
 @media (max-width: 760px) {
