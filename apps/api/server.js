@@ -32,6 +32,7 @@ async function start() {
   }
 }
 
-// only start the server when running locally, not on vercel
-if (process.env.VERCEL !== "1") start();
+// on vercel, connectDB at module load since start() is skipped
+if (process.env.VERCEL === "1") connectDB();
+else start();
 export default app;
