@@ -7,9 +7,15 @@ import App from "./App.jsx";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      // retry once on transient network failures
       retry: 1,
       staleTime: 10_000,
-      refetchOnWindowFocus: false,
+      // refetch when user returns to tab after a network blip
+      refetchOnWindowFocus: true,
+    },
+    mutations: {
+      // safe to retry POST because every request carries an Idempotency-Key
+      retry: 1,
     },
   },
 });
