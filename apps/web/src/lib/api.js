@@ -6,18 +6,12 @@ function withBase(path) {
 
 export async function fetchExpenses({ category, sort }) {
   const params = new URLSearchParams();
-
   if (category) params.set("category", category);
   if (sort) params.set("sort", sort);
 
   const query = params.toString();
-  const url = withBase(`/api/expenses${query ? `?${query}` : ""}`);
-
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error("Could not load expenses");
-  }
-
+  const res = await fetch(withBase(`/api/expenses${query ? `?${query}` : ""}`));
+  if (!res.ok) throw new Error("Could not load expenses");
   return res.json();
 }
 
@@ -27,6 +21,7 @@ export async function fetchSummary() {
   return res.json();
 }
 
+export async function createExpense(payload, idempotencyKey) {
   const res = await fetch(withBase("/api/expenses"), {
     method: "POST",
     headers: {
@@ -38,8 +33,7 @@ export async function fetchSummary() {
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    const message = data.error || "Could not create expense";
-    throw new Error(message);
+    throw new Error(data.error || "Could not create expense");
   }
 
   return res.json();

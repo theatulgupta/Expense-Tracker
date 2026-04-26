@@ -3,6 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createExpense, fetchExpenses } from "./lib/api";
 import SummaryPanel from "./SummaryPanel";
 
+// categories are derived from ALL expenses (no filter) so the dropdown
+// never loses options when a filter is active
+
 const initialForm = {
   amount: "",
   category: "",
@@ -40,10 +43,21 @@ function App() {
     [items],
   );
 
+  // fetch all expenses (no filter) just to build the category list
+  const allExpensesQuery = useQuery({
+    queryKey: ["expenses", {}],
+    queryFn: () => fetchExpenses({}),
+  });
+
   const categories = useMemo(() => {
-    const list = items.map((item) => item.category).filter(Boolean);
-    return [...new Set(list)].sort((a, b) => a.localeCompare(b));
-  }, [items]);
+    const source = allExpensesQuery.data;
+    const all = Array.isArray(source)
+      ? source
+      : source?.items ?? source?.data ?? [];
+    return [...new Set(all.map((i) => i.category).filter(Boolean))].sort((a, b) =>
+      a.localeCompare(b),
+    );
+  }, [allExpensesQuery.data]);
 
   const createMutation = useMutation({
     mutationFn: (values) => createExpense(values, idempotencyKey.current),
