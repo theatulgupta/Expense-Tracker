@@ -184,6 +184,12 @@ th {
   margin-left: 4px;
 }
 
+.label-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 @media (max-width: 760px) {
   .form-grid {
     grid-template-columns: 1fr;

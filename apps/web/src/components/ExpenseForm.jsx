@@ -54,7 +54,9 @@ export default function ExpenseForm({ onSubmit, isPending, successMsg }) {
       <h2>Add Expense</h2>
       <form className="form-grid" onSubmit={handleSubmit}>
         <label>
-          Amount <span className="required">*</span>
+          <span className="label-header">
+            Amount <span className="required">*</span>
+          </span>
           <input
             name="amount"
             type="number"
@@ -68,7 +70,9 @@ export default function ExpenseForm({ onSubmit, isPending, successMsg }) {
         </label>
 
         <label>
-          Category <span className="required">*</span>
+          <span className="label-header">
+            Category <span className="required">*</span>
+          </span>
           <select name="category" value={form.category} onChange={handleChange} required>
             <option value="">Select category</option>
             {CATEGORIES.map((c) => (
@@ -78,7 +82,9 @@ export default function ExpenseForm({ onSubmit, isPending, successMsg }) {
         </label>
 
         <label>
-          Date <span className="required">*</span>
+          <span className="label-header">
+            Date <span className="required">*</span>
+          </span>
           <input
             name="date"
             type="date"
@@ -103,7 +109,10 @@ export default function ExpenseForm({ onSubmit, isPending, successMsg }) {
         )}
 
         <label className="full">
-          Description <span className="optional">(optional)</span>
+          <span className="label-header">
+            Description
+            <span className="optional">(optional — defaults to category if left blank)</span>
+          </span>
           <input
             name="description"
             value={form.description}
