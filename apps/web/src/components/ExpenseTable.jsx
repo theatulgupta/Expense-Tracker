@@ -97,7 +97,7 @@ export default function ExpenseTable({
                     <tr key={item.id}>
                       <td>{formatDate(item.date)}</td>
                       <td>{item.category}</td>
-                      <td>{item.description || "-"}</td>
+                      <td>{item.description || item.category}</td>
                       <td className="right">₹{Number(item.amount).toFixed(2)}</td>
                     </tr>
                   ))
