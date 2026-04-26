@@ -33,11 +33,13 @@ function newKey() {
     : `${Date.now()}-${Math.random()}`;
 }
 
-// DATE strings from Postgres ("2026-04-26") are UTC midnight when parsed by
-// new Date(). Appending T00:00:00 forces local-time parse so toLocaleDateString
-// never shows the previous day for UTC+ users.
+// Postgres DATE returns "2026-04-26"; old TIMESTAMP rows return "2026-04-26T..."
+// Normalise to the date part only, then append T00:00:00 to force local-time
+// parse so toLocaleDateString never shows the previous day for UTC+ users.
 function formatDate(dateStr) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString();
+  const datePart = String(dateStr).slice(0, 10);
+  const d = new Date(`${datePart}T00:00:00`);
+  return isNaN(d) ? dateStr : d.toLocaleDateString();
 }
 
 function App() {
