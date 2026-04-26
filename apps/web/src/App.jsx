@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createExpense, fetchExpenses } from "./lib/api";
 
@@ -9,11 +9,18 @@ const initialForm = {
   date: "",
 };
 
+function newKey() {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`;
+}
+
 function App() {
   const [form, setForm] = useState(initialForm);
   const [category, setCategory] = useState("");
   const [sort, setSort] = useState("date_desc");
   const [submitError, setSubmitError] = useState("");
+  const idempotencyKey = useRef(newKey());
   const queryClient = useQueryClient();
 
   const expensesQuery = useQuery({
@@ -38,15 +45,10 @@ function App() {
   }, [items]);
 
   const createMutation = useMutation({
-    mutationFn: async (values) => {
-      const idempotencyKey =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `expense-${Date.now()}`;
-      return createExpense(values, idempotencyKey);
-    },
+    mutationFn: (values) => createExpense(values, idempotencyKey.current),
     onSuccess: async () => {
       setForm(initialForm);
+      idempotencyKey.current = newKey();
       await queryClient.invalidateQueries({ queryKey: ["expenses"] });
       setSubmitError("");
     },
@@ -209,7 +211,9 @@ function App() {
                         <td>{new Date(item.date).toLocaleDateString()}</td>
                         <td>{item.category}</td>
                         <td>{item.description || "-"}</td>
-                        <td className="right">₹{Number(item.amount).toFixed(2)}</td>
+                        <td className="right">
+                          ₹{Number(item.amount).toFixed(2)}
+                        </td>
                       </tr>
                     ))
                   )}
