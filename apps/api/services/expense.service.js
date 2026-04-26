@@ -1,32 +1,40 @@
 import sql from "../lib/db.js";
 
 export async function create(data, idempotencyKey) {
-  // if key provided, check for existing record first
-  if (idempotencyKey) {
-    const existing = await sql`
-      SELECT e.* FROM expenses e
-      JOIN idempotency_keys ik ON ik.expense_id = e.id
-      WHERE ik.key = ${idempotencyKey}
+  // Without a key, just insert — no idempotency guarantee
+  if (!idempotencyKey) {
+    const rows = await sql`
+      INSERT INTO expenses (amount, category, description, date)
+      VALUES (${data.amount}, ${data.category}, ${data.description || null}, ${data.date})
+      RETURNING *
     `;
-    if (existing.length > 0) return existing[0];
+    return rows[0];
   }
 
-  const rows = await sql`
-    INSERT INTO expenses (amount, category, description, date)
-    VALUES (${data.amount}, ${data.category}, ${data.description || null}, ${new Date(data.date)})
-    RETURNING *
+  // With a key: check first to avoid unnecessary writes on retries
+  const existing = await sql`
+    SELECT e.* FROM expenses e
+    JOIN idempotency_keys ik ON ik.expense_id = e.id
+    WHERE ik.key = ${idempotencyKey}
   `;
-  const expense = rows[0];
+  if (existing.length > 0) return existing[0];
 
-  if (idempotencyKey) {
-    await sql`
+  // Insert expense then record key atomically — prevents duplicate on concurrent retries
+  const rows = await sql.transaction(async (tx) => {
+    const inserted = await tx`
+      INSERT INTO expenses (amount, category, description, date)
+      VALUES (${data.amount}, ${data.category}, ${data.description || null}, ${data.date})
+      RETURNING *
+    `;
+    await tx`
       INSERT INTO idempotency_keys (key, expense_id)
-      VALUES (${idempotencyKey}, ${expense.id})
+      VALUES (${idempotencyKey}, ${inserted[0].id})
       ON CONFLICT (key) DO NOTHING
     `;
-  }
+    return inserted;
+  });
 
-  return expense;
+  return rows[0];
 }
 
 export async function list(query) {

@@ -13,7 +13,7 @@ export async function connectDB() {
         amount NUMERIC(10,2) NOT NULL CHECK (amount > 0),
         category VARCHAR(255) NOT NULL,
         description TEXT,
-        date TIMESTAMP DEFAULT NOW(),
+        date DATE DEFAULT CURRENT_DATE,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `;

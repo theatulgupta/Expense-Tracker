@@ -21,7 +21,8 @@ app.get("/", (req, res) => {
 app.use("/api/expenses", expenses);
 
 // catch all errors and send formatted response
-app.use((err, req, res) => {
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
   const status = err.status || 500;
   const message = err.message || "Server error";
   console.error(`[${status}]`, message);
