@@ -161,3 +161,50 @@ th {
     justify-content: space-between;
   }
 }
+
+.skeleton {
+  display: inline-block;
+  width: 80%;
+  height: 14px;
+  background: linear-gradient(90deg, #e5eaf0 25%, #f0f4f8 50%, #e5eaf0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 4px;
+}
+
+.skeleton-sm {
+  width: 50%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-row td {
+  padding: 12px 8px;
+}
+
+.error-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.error-state .error {
+  margin: 0;
+}
+
+button.retry {
+  background: transparent;
+  border: 1px solid #b91c1c;
+  color: #b91c1c;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+button.retry:hover {
+  background: #fef2f2;
+}

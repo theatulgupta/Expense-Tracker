@@ -182,9 +182,41 @@ function App() {
           </div>
         </div>
 
-        {expensesQuery.isLoading ? <p>loading expenses...</p> : null}
+        {expensesQuery.isLoading ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>date</th>
+                  <th>category</th>
+                  <th>description</th>
+                  <th className="right">amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[1, 2, 3].map((n) => (
+                  <tr key={n} className="skeleton-row">
+                    <td><span className="skeleton" /></td>
+                    <td><span className="skeleton" /></td>
+                    <td><span className="skeleton" /></td>
+                    <td><span className="skeleton skeleton-sm" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
         {expensesQuery.isError ? (
-          <p className="error">could not load expenses. please retry.</p>
+          <div className="error-state">
+            <p className="error">could not load expenses.</p>
+            <button
+              type="button"
+              className="retry"
+              onClick={() => expensesQuery.refetch()}
+            >
+              retry
+            </button>
+          </div>
         ) : null}
 
         {!expensesQuery.isLoading && !expensesQuery.isError ? (
