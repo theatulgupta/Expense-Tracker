@@ -74,7 +74,9 @@ button {
   border-radius: 8px;
   border: 1px solid #cfd8e3;
   padding: 8px 10px;
+  height: 40px;
   width: 100%;
+  box-sizing: border-box;
 }
 
 input:focus,
@@ -89,6 +91,8 @@ button {
   border-color: #1769e0;
   color: #fff;
   cursor: pointer;
+  height: auto;
+  padding: 10px;
 }
 
 button:disabled {
