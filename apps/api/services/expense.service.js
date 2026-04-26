@@ -1,12 +1,32 @@
 import sql from "../lib/db.js";
 
-export async function create(data) {
+export async function create(data, idempotencyKey) {
+  // if key provided, check for existing record first
+  if (idempotencyKey) {
+    const existing = await sql`
+      SELECT e.* FROM expenses e
+      JOIN idempotency_keys ik ON ik.expense_id = e.id
+      WHERE ik.key = ${idempotencyKey}
+    `;
+    if (existing.length > 0) return existing[0];
+  }
+
   const rows = await sql`
     INSERT INTO expenses (amount, category, description, date)
     VALUES (${data.amount}, ${data.category}, ${data.description || null}, ${new Date(data.date)})
     RETURNING *
   `;
-  return rows[0];
+  const expense = rows[0];
+
+  if (idempotencyKey) {
+    await sql`
+      INSERT INTO idempotency_keys (key, expense_id)
+      VALUES (${idempotencyKey}, ${expense.id})
+      ON CONFLICT (key) DO NOTHING
+    `;
+  }
+
+  return expense;
 }
 
 export async function list(query) {

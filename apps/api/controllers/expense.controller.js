@@ -17,7 +17,8 @@ const listSchema = z.object({
 export async function create(req, res, next) {
   try {
     const body = createSchema.parse(req.body);
-    const expense = await Expense.create(body);
+    const idempotencyKey = req.headers["idempotency-key"] || null;
+    const expense = await Expense.create(body, idempotencyKey);
     res.status(201).json(expense);
   } catch (err) {
     // zod validation errors go back to client, other errors passed to error handler

@@ -18,6 +18,14 @@ export async function connectDB() {
       )
     `;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS idempotency_keys (
+        key TEXT PRIMARY KEY,
+        expense_id INTEGER REFERENCES expenses(id),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
     console.log("✓ Database ready");
   } catch (err) {
     console.error("✗ Database error:", err.message);
