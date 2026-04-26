@@ -1,14 +1,20 @@
 # Expense Tracker
 
-A full-stack expense tracking application with a React frontend and Node.js backend.
+A full-stack expense tracking app I built as part of a technical assessment. It lets you log expenses, filter by category, sort by date, and see a breakdown of spending per category.
 
-## Architecture
+Built with React on the frontend and Express + PostgreSQL on the backend.
 
-- **Frontend**: React + TanStack Query — form, list, filter, sort, totals, summary
-- **Backend**: Express.js API with Zod validation
-- **Database**: PostgreSQL via Neon (serverless)
+---
 
-## Setup
+## Tech Stack
+
+- **Frontend** — React, TanStack Query, Vite
+- **Backend** — Node.js, Express, Zod
+- **Database** — PostgreSQL via Neon (serverless)
+
+---
+
+## Running locally
 
 ### Backend
 
@@ -18,7 +24,7 @@ npm install
 npm run start
 ```
 
-Create `.env`:
+Create a `.env` file in `apps/api`:
 
 ```
 DATABASE_URL=your_neon_connection_string
@@ -33,37 +39,65 @@ npm install
 npm run dev
 ```
 
-## API Endpoints
+The Vite dev server proxies `/api` to `localhost:3000` so you don't need to configure anything else locally.
 
-- `POST /api/expenses` — Create expense (idempotent via `Idempotency-Key` header)
-- `GET /api/expenses` — List expenses (supports `?category=Food&sort=date_desc`)
-- `GET /api/expenses/summary` — Category breakdown with totals
+---
 
-## Design Decisions
+## API
 
-1. **Money as `NUMERIC(10,2)`**: PostgreSQL NUMERIC preserves exact decimal precision for financial data — no floating-point rounding errors that `FLOAT` or JS `number` arithmetic would introduce.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/expenses` | Create a new expense |
+| GET | `/api/expenses` | List expenses (filter + sort via query params) |
+| GET | `/api/expenses/summary` | Total per category |
 
-2. **`DATE` column, not `TIMESTAMP`**: Expenses have a calendar date (e.g. "26 Apr 2026"), not a point in time. Using `TIMESTAMP` causes UTC-offset bugs where `toLocaleDateString()` on the frontend renders the wrong day for users in UTC+ timezones.
+Query params for GET: `?category=Food&sort=date_desc`
 
-3. **Idempotency via a dedicated `idempotency_keys` table**: The client generates a UUID per form submission (stored in `useRef` so it survives re-renders) and sends it as an `Idempotency-Key` header. The server checks for an existing key before inserting. The insert + key write happen inside a **transaction** to eliminate the check-then-insert race condition under concurrent retries. The key rotates only on success, so page refreshes or network retries before success replay safely.
+---
 
-4. **CHECK constraint on `amount > 0`**: Database enforces positive amounts as a hard constraint — validation at the application layer (Zod + frontend) is the first line of defence, but the DB is the source of truth.
+## Design decisions I made
 
-5. **Zod on both layers**: Controller validates request shape with Zod before touching the DB. Frontend validates before firing the mutation. Both layers fail fast with clear messages.
+**Money stored as `NUMERIC(10,2)`**
+I didn't want floating point issues with financial data. `FLOAT` in Postgres (or plain JS numbers) can give you things like `0.1 + 0.2 = 0.30000000000000004`. `NUMERIC` stores exact decimals.
 
-6. **TanStack Query for all server state**: Handles caching, background refetch, loading/error states, and retry logic without custom hooks. `invalidateQueries` after a successful create keeps the list and summary in sync.
+**`DATE` column instead of `TIMESTAMP`**
+Expenses belong to a calendar date, not a specific moment in time. If I stored a timestamp and then called `toLocaleDateString()` on the frontend, users in UTC+ timezones would see the wrong date because JS parses UTC midnight and shifts it back. Using `DATE` and appending `T00:00:00` before parsing fixes this.
 
-## Trade-offs
+**Duplicate prevention via a unique index**
+Instead of a separate idempotency keys table (which I had initially), I simplified to a `UNIQUE INDEX` on `(amount, category, date, COALESCE(description, ''))`. If you submit the same expense twice, the second insert hits `ON CONFLICT DO NOTHING` and returns the existing row. The `COALESCE` is needed because Postgres treats two `NULL` values as distinct in a regular UNIQUE constraint.
 
-- **No authentication**: Single-user scope; adding auth would require session management, token refresh, and user-scoped queries — out of scope for this timebox.
-- **No edit/delete**: MVP focuses on creation and retrieval. The data model supports it trivially if needed.
-- **No pagination**: Assumes a personal expense tracker with a reasonable row count. Would add `LIMIT/OFFSET` or cursor pagination before scaling.
-- **No automated tests**: Correctness is enforced via DB constraints, Zod schemas, and idempotency logic rather than a test suite. Would add integration tests for the idempotency path and service layer as a next step.
+**Zod validation on both ends**
+The controller validates the request body before touching the DB. The frontend validates before firing the mutation. Both fail fast with a clear message rather than letting bad data through.
 
-## Intentionally Not Done
+**TanStack Query for server state**
+Handles loading states, error states, caching, and refetching without me writing any of that manually. After a successful create, I just call `invalidateQueries` and the list + summary refresh automatically.
 
-- Update/delete endpoints
-- User accounts or multi-tenancy
-- Advanced analytics or forecasting
-- Real-time updates (WebSocket/SSE)
-- Pagination
+**10 second request timeout**
+All fetch calls use `AbortController` with a 10s timeout. Without this, a slow network just hangs the UI with no feedback.
+
+---
+
+## What I didn't build (and why)
+
+- **Edit / delete** — the assignment was focused on creation and retrieval, and the data model supports it easily if needed
+- **Auth** — out of scope for a single-user personal finance tool
+- **Pagination** — not needed at this scale, but I'd add cursor-based pagination before putting this in front of real users
+- **Tests** — I relied on DB constraints and Zod schemas for correctness instead of a test suite, given the time constraint
+
+---
+
+## Project structure
+
+```
+apps/
+  api/          Express backend
+    controllers/
+    services/
+    routes/
+    lib/
+  web/          React frontend
+    src/
+      components/
+      hooks/
+      lib/
+```
