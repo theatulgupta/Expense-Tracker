@@ -21,7 +21,12 @@ export async function fetchExpenses({ category, sort }) {
   return res.json();
 }
 
-export async function createExpense(payload, idempotencyKey) {
+export async function fetchSummary() {
+  const res = await fetch(withBase("/api/expenses/summary"));
+  if (!res.ok) throw new Error("Could not load summary");
+  return res.json();
+}
+
   const res = await fetch(withBase("/api/expenses"), {
     method: "POST",
     headers: {

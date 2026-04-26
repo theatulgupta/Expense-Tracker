@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createExpense, fetchExpenses } from "./lib/api";
+import SummaryPanel from "./SummaryPanel";
 
 const initialForm = {
   amount: "",
@@ -50,6 +51,7 @@ function App() {
       setForm(initialForm);
       idempotencyKey.current = newKey();
       await queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      await queryClient.invalidateQueries({ queryKey: ["summary"] });
       setSubmitError("");
     },
     onError: (error) => {
@@ -223,6 +225,8 @@ function App() {
           </>
         ) : null}
       </section>
+
+      <SummaryPanel />
     </main>
   );
 }
